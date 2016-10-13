@@ -233,16 +233,57 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public static long ParseContentLength(StringValues value)
+        public static unsafe long ParseContentLength(StringValues value)
         {
-            try
+            const string errorMessage = "Content-Length value must be an integral number.";
+            var input = value.ToString();
+            var parsed = (long)0;
+
+            fixed (char* ptr = input)
             {
-                return long.Parse(value, NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite, CultureInfo.InvariantCulture);
+                var ch = ptr;
+                var end = ptr + input.Length;
+
+                // Skip leading whitespace
+                while (ch < end && ((*ch >= 0x09 && *ch <= 0x0D) || *ch == 0x20))
+                {
+                    ch++;
+                }
+
+                // If done on end of input or char is not a number, input is invalid
+                if (ch == end || *ch < 0x30 || *ch > 0x39)
+                {
+                    throw new InvalidOperationException(errorMessage);
+                }
+
+                // Parse number
+                while (ch < end && *ch >= 0x30 && *ch <= 0x39)
+                {
+                    parsed *= 10;
+                    parsed += *ch - 0x30;
+                    ch++;
+                }
+
+                // If done and there's input and char is not whitespace, input is invalid 
+                if (ch < end && (*ch < 0x09 || *ch > 0x0D || *ch != 0x20))
+                {
+                    throw new InvalidOperationException(errorMessage);
+                }
+
+                // Skip trailing whitespace
+                while (ch < end && ((*ch >= 0x09 && *ch <= 0x0D) || *ch == 0x20))
+                {
+                    ch++;
+                }
+
+                // If not at end of input, input is invalid
+                if (ch != end)
+                {
+                    throw new InvalidOperationException(errorMessage);
+                }
             }
-            catch (FormatException ex)
-            {
-                throw new InvalidOperationException("Content-Length value must be an integral number.", ex);
-            }
+
+            return parsed;
         }
 
         private static void ThrowInvalidHeaderCharacter(char ch)
