@@ -235,14 +235,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public static unsafe long ParseContentLength(StringValues value)
         {
-            const string errorMessage = "Content-Length value must be an integral number.";
             var input = value.ToString();
-            var parsed = (long)0;
+            var parsed = 0L;
 
             fixed (char* ptr = input)
             {
-                var ch = ptr;
-                var end = ptr + input.Length;
+                var ch = (ushort*)ptr;
+                var end = ch + input.Length;
 
                 // Skip leading whitespace
                 while (ch < end && ((*ch >= 0x09 && *ch <= 0x0D) || *ch == 0x20))
@@ -250,24 +249,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     ch++;
                 }
 
-                // If done on end of input or char is not a number, input is invalid
-                if (ch == end || *ch < 0x30 || *ch > 0x39)
+                // Parse number
+                ushort digit = 0;
+                if (ch == end || (digit = (ushort)(*ch - 0x30)) > 9)
                 {
-                    throw new InvalidOperationException(errorMessage);
+                    ThrowInvalidContentLengthException();
                 }
 
-                // Parse number
-                while (ch < end && *ch >= 0x30 && *ch <= 0x39)
+                do
                 {
                     parsed *= 10;
-                    parsed += *ch - 0x30;
+                    parsed += digit;
                     ch++;
-                }
+                } while (ch < end && (digit = (ushort)(*ch - 0x30)) <= 9);
 
                 // If done and there's input and char is not whitespace, input is invalid 
                 if (ch < end && (*ch < 0x09 || *ch > 0x0D || *ch != 0x20))
                 {
-                    throw new InvalidOperationException(errorMessage);
+                    ThrowInvalidContentLengthException();
                 }
 
                 // Skip trailing whitespace
@@ -279,11 +278,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // If not at end of input, input is invalid
                 if (ch != end)
                 {
-                    throw new InvalidOperationException(errorMessage);
+                    ThrowInvalidContentLengthException();
                 }
             }
 
             return parsed;
+        }
+
+        private static void ThrowInvalidContentLengthException()
+        {
+            throw new InvalidOperationException("Content-Length value must be an integral number.");
         }
 
         private static void ThrowInvalidHeaderCharacter(char ch)
