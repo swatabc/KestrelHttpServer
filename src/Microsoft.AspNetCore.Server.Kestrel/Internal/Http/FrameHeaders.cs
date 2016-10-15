@@ -264,7 +264,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 } while (ch < end && (digit = (ushort)(*ch - 0x30)) <= 9);
 
                 // If done and there's input and char is not whitespace, input is invalid 
-                if (ch < end && (*ch < 0x09 || *ch > 0x0D || *ch != 0x20))
+                if (ch < end && (*ch < 0x09 || *ch > 0x0D) && *ch != 0x20)
                 {
                     ThrowInvalidContentLengthException();
                 }
