@@ -157,7 +157,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var headers = new FrameResponseHeaders();
             var dictionary = (IDictionary<string, StringValues>)headers;
 
-            Assert.Throws<InvalidOperationException>(() => dictionary.Add("Content-Length", new[] { contentLength }));
+            var exception = Assert.Throws<InvalidOperationException>(() => dictionary.Add("Content-Length", new[] { contentLength }));
+            Assert.Equal($"Invalid Content-Length: \"{contentLength}\". Value must be a positive integral number.", exception.Message);
         }
 
         [Theory]
@@ -167,7 +168,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var headers = new FrameResponseHeaders();
             var dictionary = (IDictionary<string, StringValues>)headers;
 
-            Assert.Throws<InvalidOperationException>(() => ((IHeaderDictionary)headers)["Content-Length"] = contentLength);
+            var exception = Assert.Throws<InvalidOperationException>(() => ((IHeaderDictionary)headers)["Content-Length"] = contentLength);
+            Assert.Equal($"Invalid Content-Length: \"{contentLength}\". Value must be a positive integral number.", exception.Message);
         }
 
         [Theory]
@@ -176,7 +178,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var headers = new FrameResponseHeaders();
 
-            Assert.Throws<InvalidOperationException>(() => headers.SetRawContentLength(contentLength, Encoding.ASCII.GetBytes(contentLength)));
+            var exception = Assert.Throws<InvalidOperationException>(() => headers.SetRawContentLength(contentLength, Encoding.ASCII.GetBytes(contentLength)));
+            Assert.Equal($"Invalid Content-Length: \"{contentLength}\". Value must be a positive integral number.", exception.Message);
         }
 
         [Theory]
@@ -184,7 +187,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void ThrowsWhenAssigningHeaderContentLengthToNonNumericValue(string contentLength)
         {
             var headers = new FrameResponseHeaders();
-            Assert.Throws<InvalidOperationException>(() => headers.HeaderContentLength = contentLength);
+
+            var exception = Assert.Throws<InvalidOperationException>(() => headers.HeaderContentLength = contentLength);
+            Assert.Equal($"Invalid Content-Length: \"{contentLength}\". Value must be a positive integral number.", exception.Message);
         }
 
         [Theory]
@@ -264,31 +269,14 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             "00",
             "042",
             "42",
-            " 42",
-            "42 ",
         };
 
         public static TheoryData<string> BadContentLengths => new TheoryData<string>
         {
             "",
             " ",
-            "\u0008",
-            "\u0009",
-            "\u000A",
-            "\u000B",
-            "\u000C",
-            "\u000D",
-            "\u000E",
-            "\u000842",
-            "42\u0008",
-            "\u000E42",
-            "42\u000E",
-            "42 42",
-            "42\u000942",
-            "42\u000A42",
-            "42\u000B42",
-            "42\u000C42",
-            "42\u000D42",
+            " 42",
+            "42 ",
             "bad",
         };
     }

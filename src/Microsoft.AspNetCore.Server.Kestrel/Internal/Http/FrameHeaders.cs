@@ -243,51 +243,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var ch = (ushort*)ptr;
                 var end = ch + input.Length;
 
-                // Skip leading whitespace
-                while (ch < end && ((*ch >= 0x09 && *ch <= 0x0D) || *ch == 0x20))
+                if (ch == end)
                 {
-                    ch++;
+                    ThrowInvalidContentLengthException(value);
                 }
 
-                // Parse number
                 ushort digit = 0;
-                if (ch == end || (digit = (ushort)(*ch - 0x30)) > 9)
-                {
-                    ThrowInvalidContentLengthException();
-                }
-
-                do
+                while (ch < end && (digit = (ushort)(*ch - 0x30)) <= 9)
                 {
                     parsed *= 10;
                     parsed += digit;
                     ch++;
-                } while (ch < end && (digit = (ushort)(*ch - 0x30)) <= 9);
-
-                // If done and there's input and char is not whitespace, input is invalid 
-                if (ch < end && (*ch < 0x09 || *ch > 0x0D) && *ch != 0x20)
-                {
-                    ThrowInvalidContentLengthException();
                 }
 
-                // Skip trailing whitespace
-                while (ch < end && ((*ch >= 0x09 && *ch <= 0x0D) || *ch == 0x20))
-                {
-                    ch++;
-                }
-
-                // If not at end of input, input is invalid
                 if (ch != end)
                 {
-                    ThrowInvalidContentLengthException();
+                    ThrowInvalidContentLengthException(value);
                 }
             }
 
             return parsed;
         }
 
-        private static void ThrowInvalidContentLengthException()
+        private static void ThrowInvalidContentLengthException(string value)
         {
-            throw new InvalidOperationException("Content-Length value must be an integral number.");
+            throw new InvalidOperationException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
         }
 
         private static void ThrowInvalidHeaderCharacter(char ch)
